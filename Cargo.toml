@@ -1,0 +1,19 @@
+[package]
+name = "safepass"
+version = "0.1.0"
+edition = "2021"
+authors = ["Lorenzo Costa <http://www.costa86.tech>"]
+description = "A CLI password manager"
+license = "AGPL-3.0-or-later"
+keywords = ["cli", "password", "fernet", "security", "encryption"]
+repository = "https://github.com/costa86/password-manager"
+documentation = "https://docs.rs/password-manager/"
+homepage = "https://docs.rs/password-manager/"
+
+[dependencies]
+copypasta = "0.8.1"
+rusqlite = "0.28.0"
+home = "0.5.3"
+dialoguer = "0.10.2"
+fernet = { version = "0.1", features = ["fernet_danger_timestamps"] }
+colored = "2.0.0"
