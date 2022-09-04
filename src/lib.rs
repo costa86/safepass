@@ -98,7 +98,7 @@ pub fn display_services(conn: &Connection) {
     }
 
     let services = get_services(&conn).unwrap();
-    let service_names: Vec<String> = services
+    let mut service_names: Vec<String> = services
         .iter()
         .map(|x| {
             format!(
@@ -107,8 +107,12 @@ pub fn display_services(conn: &Connection) {
             )
         })
         .collect();
+    service_names.sort();
 
-    let (selected_service_text, _) = get_user_selection(&service_names, "Available services");
+    let (selected_service_text, _) = get_user_selection(
+        &service_names,
+        format!("{} available services", service_names.len()).as_str(),
+    );
     if key.is_none() {
         display_message(
             "error",
@@ -320,11 +324,17 @@ pub fn delete_services(conn: &Connection) {
         return;
     }
     let services = get_services(&conn).unwrap();
-    let service_names: Vec<String> = services
+    let mut service_names: Vec<String> = services
         .iter()
         .map(|x| format!("{} with username/email {}", x.name, x.username))
         .collect();
-    let selected_service_text = get_user_multi(&service_names, "Services to delete");
+
+    service_names.sort();
+
+    let selected_service_text = get_user_multi(
+        &service_names,
+        "Services to delete. Hit space key to select/unselect",
+    );
 
     if selected_service_text.len() == 0 {
         display_message("info", "No service will be deleted", "green");
