@@ -8,6 +8,13 @@ use std::{env, fmt::Display, fs};
 pub const TABLE: &str = "services";
 pub const CHOICES: [&str; 4] = ["Show services", "Create service", "Delete services", "Exit"];
 
+#[derive(Debug)]
+pub struct Service {
+    name: String,
+    password: String,
+    username: String,
+}
+
 fn get_key_content(key_file_path: &str) -> String {
     let key = fs::read(&key_file_path).unwrap();
     let key = String::from_utf8_lossy(&key).to_string();
@@ -60,14 +67,9 @@ pub fn get_database_path() -> String {
     )
 }
 
-#[derive(Debug)]
-pub struct Service {
-    name: String,
-    password: String,
-}
-
 ///Set clipboard (control + v)
 pub fn set_clipboard(content: &str) {
+    println!("{}", &content);
     let mut ctx = ClipboardContext::new().unwrap();
     ctx.set_contents(content.to_string().to_owned()).unwrap();
     ctx.get_contents().unwrap();
@@ -99,10 +101,15 @@ pub fn display_services(conn: &Connection) {
     let services = get_services(&conn).unwrap();
     let service_names: Vec<String> = services
         .iter()
-        .map(|x| format!("{} - {}", &x.name, &emoji))
+        .map(|x| {
+            format!(
+                "{} with username/email {} has password {}",
+                &x.name, &x.username, &emoji
+            )
+        })
         .collect();
 
-    let (selected_service_name, _) = get_user_selection(&service_names, "Available services");
+    let (selected_service_text, _) = get_user_selection(&service_names, "Available services");
     if key.is_none() {
         display_message(
             "error",
@@ -111,10 +118,15 @@ pub fn display_services(conn: &Connection) {
         );
         return;
     }
+    let name = selected_service_text.split_whitespace().next().unwrap();
+    let username = selected_service_text
+        .split_ascii_whitespace()
+        .nth(3)
+        .unwrap();
 
     let selected_service = services
         .iter()
-        .find(|x| x.name == selected_service_name.split_whitespace().next().unwrap())
+        .find(|x| x.name == name && x.username == username)
         .unwrap();
 
     let password = decrypt_text(&selected_service.password, &key.unwrap());
@@ -123,7 +135,6 @@ pub fn display_services(conn: &Connection) {
         display_message("error", "Invalid security key", "red");
         return;
     }
-
     set_clipboard(&password.unwrap());
 
     let message = format!(
@@ -140,7 +151,8 @@ pub fn create_database(conn: &Connection) -> Result<()> {
             "CREATE TABLE IF NOT EXISTS {TABLE} (
                   id              INTEGER PRIMARY KEY,
                   name           VARCHAR(255) NOT NULL,
-                  password          VARCHAR(255) NOT NULL
+                  password          VARCHAR(255) NOT NULL,
+                  username          VARCHAR(255) NOT NULL
                   )"
         ),
         [],
@@ -168,20 +180,40 @@ pub fn purge_database(conn: &Connection) -> Result<()> {
 ///Create server connection on database
 pub fn create_service(conn: &Connection) {
     let key = get_key();
+    let spaces_tip_message = "Tip: replace spaces with underscores";
 
     if key.is_none() {
         display_message("error", "Security key is required to proceed", "red");
         return;
     }
 
-    let name = get_user_input("Name", "sample");
+    let name = get_user_input("Name", "sample", false);
+
+    if name.is_none() {
+        display_message("info", &spaces_tip_message, "yellow");
+        return;
+    }
+    let username = get_user_input("Username/email", env!("USER"), false);
+
+    if username.is_none() {
+        display_message("info", &spaces_tip_message, "yellow");
+        return;
+    }
+
+    let name = name.unwrap();
+    let username = username.unwrap();
+
     let password = get_user_input_masked("Password");
     let password = encrypt_text(&password, &key.unwrap());
 
-    let record = Service { name, password };
+    let record = Service {
+        name,
+        password,
+        username,
+    };
     conn.execute(
-        &format!("INSERT INTO {TABLE} (name, password) VALUES (?1, ?2)"),
-        params![record.name, record.password,],
+        &format!("INSERT INTO {TABLE} (name, password, username) VALUES (?1, ?2, ?3)"),
+        params![record.name, record.password, record.username],
     )
     .unwrap();
 
@@ -199,6 +231,7 @@ pub fn get_services(conn: &Connection) -> Result<Vec<Service>> {
         Ok(Service {
             name: row.get(1)?,
             password: row.get(2)?,
+            username: row.get(3)?,
         })
     })?;
 
@@ -222,13 +255,25 @@ fn get_user_confirmation(question: &str) -> bool {
         .unwrap()
 }
 
-///Get text response
-fn get_user_input(text: &str, default_text: &str) -> String {
-    Input::with_theme(&ColorfulTheme::default())
+///Get text response.
+fn get_user_input(text: &str, default_text: &str, allow_spaces: bool) -> Option<String> {
+    let res: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt(text)
         .default(default_text.into())
         .interact_text()
-        .unwrap()
+        .unwrap();
+
+    if allow_spaces {
+        return Some(res);
+    }
+
+    let text_parts = &res.split_ascii_whitespace().count();
+    if text_parts != &1_usize {
+        display_message("error", "Spaces are not allowed", "red");
+        return None;
+    }
+    let res = res.split_ascii_whitespace().next().unwrap().to_string();
+    Some(res)
 }
 
 ///Get singe response from choices

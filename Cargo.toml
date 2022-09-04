@@ -1,14 +1,13 @@
 [package]
 name = "safepass"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Lorenzo Costa <http://www.costa86.tech>"]
 description = "A CLI password manager"
 license = "AGPL-3.0-or-later"
 keywords = ["cli", "password", "fernet", "security", "encryption"]
-repository = "https://github.com/costa86/password-manager"
-documentation = "https://docs.rs/password-manager/"
-homepage = "https://docs.rs/password-manager/"
+repository = "https://github.com/costa86/safepass"
+documentation = "https://docs.rs/safepass/"
 
 [dependencies]
 copypasta = "0.8.1"

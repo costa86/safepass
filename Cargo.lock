@@ -501,7 +501,7 @@ dependencies = [
 
 [[package]]
 name = "safepass"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "colored",
  "copypasta",

@@ -10,7 +10,6 @@ SafePass is a CLI password manager
 * Sends passwords to clipboard (control + v)
 * Uses a file as a `master key`
 
-
 ## 3. Instalation
 ### 3.1 Cargo
 
@@ -25,3 +24,8 @@ SafePass is a CLI password manager
 *Make sure you've granted executable permissions to it
 
     ./safepass
+
+## 4. Important ⚠️
+TLDR: Keep the security key file intact!
+
+The security key is a file that works as a `master key` to encrypt/decrypt passwords in the database. If you tamper with it, you will lose access to all the passwords you have saved so far! It's located on the same path as the database, under the name `safepass.key`
