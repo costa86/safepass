@@ -69,7 +69,6 @@ pub fn get_database_path() -> String {
 
 ///Set clipboard (control + v)
 pub fn set_clipboard(content: &str) {
-    println!("{}", &content);
     let mut ctx = ClipboardContext::new().unwrap();
     ctx.set_contents(content.to_string().to_owned()).unwrap();
     ctx.get_contents().unwrap();
@@ -161,10 +160,10 @@ pub fn create_database(conn: &Connection) -> Result<()> {
 }
 
 ///Delete database records
-pub fn delete_records_by_name(conn: &Connection, name: &str) -> Result<()> {
+pub fn delete_record(conn: &Connection, service: &Service) -> Result<()> {
     conn.execute(
-        &format!("DELETE FROM {TABLE} WHERE name = ?1"),
-        params![name],
+        &format!("DELETE FROM {TABLE} WHERE name = ?1 AND username = ?2"),
+        params![service.name, service.username],
     )?;
     Ok(())
 }
@@ -292,7 +291,7 @@ where
 }
 
 ///Get multiple responses
-fn get_user_multi(items: &Vec<&str>, title: &str) -> Vec<String> {
+fn get_user_multi(items: &Vec<String>, title: &str) -> Vec<String> {
     let mut res = Vec::new();
 
     let chosen: Vec<usize> = MultiSelect::with_theme(&ColorfulTheme::default())
@@ -321,12 +320,20 @@ pub fn delete_services(conn: &Connection) {
         return;
     }
     let services = get_services(&conn).unwrap();
-    let service_names = services.iter().map(|x| x.name.as_str()).collect();
-    let selected_service_names = get_user_multi(&service_names, "Services to delete");
+    let service_names: Vec<String> = services
+        .iter()
+        .map(|x| format!("{} with username/email {}", x.name, x.username))
+        .collect();
+    let selected_service_text = get_user_multi(&service_names, "Services to delete");
+
+    if selected_service_text.len() == 0 {
+        display_message("info", "No service will be deleted", "green");
+        return;
+    }
 
     let question = format!(
         "Are you sure you wish to delete {:?}",
-        &selected_service_names
+        &selected_service_text
     );
 
     if !get_user_confirmation(&question) {
@@ -335,16 +342,22 @@ pub fn delete_services(conn: &Connection) {
 
     let mut services_to_delete: Vec<&Service> = Vec::new();
 
-    for i in &selected_service_names {
-        match services.iter().find(|x| &x.name == i) {
+    for i in &selected_service_text {
+        let name = i.split_ascii_whitespace().nth(0).unwrap();
+        let username = i.split_ascii_whitespace().nth(3).unwrap();
+
+        match services
+            .iter()
+            .find(|x| &x.name == &name && &x.username == &username)
+        {
             Some(x) => services_to_delete.push(x),
             None => continue,
         }
     }
     for i in services_to_delete {
-        delete_records_by_name(&conn, &i.name).unwrap();
+        delete_record(&conn, &i).unwrap();
     }
-    let message = format!("Services deleted: {:?}", &selected_service_names);
+    let message = format!("Services deleted: {:?}", &selected_service_text);
     display_message("ok", &message, "green");
 }
 
