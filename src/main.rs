@@ -10,9 +10,10 @@ fn main() -> Result<()> {
         let (_, index) = get_user_selection(&CHOICES.to_vec(), "Option");
 
         match index {
-            0 => display_services(&conn),
+            0 => display_services(&conn, false),
             1 => create_service(&conn),
             2 => delete_services(&conn),
+            3 => display_services(&conn, true),
             _ => {
                 set_clipboard("empty");
                 display_message("info", "Clipboard has been erased", "green");

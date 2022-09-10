@@ -6,7 +6,13 @@ use rusqlite::{params, Connection, Result};
 use std::{env, fmt::Display, fs};
 
 pub const TABLE: &str = "services";
-pub const CHOICES: [&str; 4] = ["Show services", "Create service", "Delete services", "Exit"];
+pub const CHOICES: [&str; 5] = [
+    "Show all services",
+    "Create service (+)",
+    "Delete services (-)",
+    "Search service by name",
+    "Exit",
+];
 
 #[derive(Debug)]
 pub struct Service {
@@ -75,7 +81,7 @@ pub fn set_clipboard(content: &str) {
 }
 
 fn database_is_empty(conn: &Connection) -> bool {
-    let services = get_services(&conn).unwrap();
+    let services = get_services(&conn, false).unwrap();
     match services.len() {
         0 => {
             display_message("error", "Database is empty", "red");
@@ -85,7 +91,7 @@ fn database_is_empty(conn: &Connection) -> bool {
     }
 }
 
-pub fn display_services(conn: &Connection) {
+pub fn display_services(conn: &Connection, search: bool) {
     if database_is_empty(&conn) {
         return;
     }
@@ -97,7 +103,13 @@ pub fn display_services(conn: &Connection) {
         emoji = "🔓";
     }
 
-    let services = get_services(&conn).unwrap();
+    let services = get_services(&conn, search).unwrap();
+
+    if services.len() == 0 {
+        display_message("error", "No service was found", "red");
+        return;
+    }
+
     let mut service_names: Vec<String> = services
         .iter()
         .map(|x| {
@@ -225,9 +237,14 @@ pub fn create_service(conn: &Connection) {
 }
 
 ///Get all database connections from database
-pub fn get_services(conn: &Connection) -> Result<Vec<Service>> {
+pub fn get_services(conn: &Connection, search: bool) -> Result<Vec<Service>> {
+    let mut query = format!("SELECT * FROM {TABLE}");
     let mut records: Vec<Service> = Vec::new();
-    let query = format!("SELECT * FROM {TABLE}");
+
+    if search {
+        let name = get_user_input("name", "sample", false).unwrap().to_string();
+        query = format!("SELECT * FROM {TABLE} WHERE name like '%{name}%'");
+    }
     let mut stmt = conn.prepare(&query)?;
 
     let result_iter = stmt.query_map([], |row| {
@@ -323,7 +340,7 @@ pub fn delete_services(conn: &Connection) {
         purge_database(&conn).unwrap();
         return;
     }
-    let services = get_services(&conn).unwrap();
+    let services = get_services(&conn, false).unwrap();
     let mut service_names: Vec<String> = services
         .iter()
         .map(|x| format!("{} with username/email {}", x.name, x.username))
