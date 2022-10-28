@@ -1,6 +1,6 @@
 [package]
 name = "safepass"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 authors = ["Lorenzo Costa <http://www.costa86.tech>"]
 description = "A CLI password manager"

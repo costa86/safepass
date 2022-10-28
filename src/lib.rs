@@ -35,7 +35,7 @@ pub fn get_key() -> Option<String> {
         Err(_) => None,
     }
 }
-fn prompt_key_creation() {
+pub fn prompt_key_creation() {
     if get_key().is_some() {
         return;
     }
@@ -91,11 +91,14 @@ fn database_is_empty(conn: &Connection) -> bool {
     }
 }
 
+
 pub fn display_services(conn: &Connection, search: bool) {
+    prompt_key_creation();
+
     if database_is_empty(&conn) {
         return;
     }
-    prompt_key_creation();
+
     let mut emoji = "🔐";
     let key = get_key();
 
